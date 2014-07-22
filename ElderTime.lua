@@ -58,8 +58,6 @@ end
 function ElderTime:OnLoad()
 	self.xmlDoc = XmlDoc.CreateFromFile("ElderTime.xml")
 	self.xmlDoc:RegisterCallback("OnDocLoaded", self)
-	
-	
 end
 
 function ElderTime:OnSave(saveDepth)
@@ -70,6 +68,9 @@ function ElderTime:OnSave(saveDepth)
 	savedVariables.format = self.format
 	savedVariables.showAMPM = self.showAMPM
 	
+	local nLeft, nTop, nRight, nBottom = self.wndMain:GetAnchorOffsets()
+	savedVariables.location = { nLeft, nTop, nRight, nBottom }
+		
 	return savedVariables
 end
 
@@ -80,17 +81,24 @@ function ElderTime:OnRestore(saveDepth, savedVariables)
 	self.source = savedVariables.source
 	self.format = savedVariables.format
 	self.showAMPM = savedVariables.showAMPM
+	self.location = savedVariables.location
 end
 
 function ElderTime:OnDocLoaded()
 	if self.xmlDoc ~= nil and self.xmlDoc:IsLoaded() then
 	    self.wndMain = Apollo.LoadForm(self.xmlDoc, "ElderTimeForm", nil, self)
+		self.wndContext = Apollo.LoadForm(self.xmlDoc, "ElderTimeContextMenu", nil, self)
 		if self.wndMain == nil then
 			Apollo.AddAddonErrorText(self, "[ElderTime]: Could not load the main window for some reason.")
 			return
 		end
+		if self.wndContext == nil then
+			Apollo.AddAddonErrorText(self, "[ElderTime]: Could not load the context menu window for some reason.")
+			return
+		end
 		
 	    self.wndMain:Show(false, true)
+		self.wndContext:Show(false, true)
 	
 		Apollo.RegisterSlashCommand("eldertime", "OnElderTimeOn", self)
 
@@ -102,12 +110,17 @@ function ElderTime:OnDocLoaded()
 		
 		fOnUpdateTimer = aInterfaceMenuList.OnUpdateTimer
 		aInterfaceMenuList.OnUpdateTimer = ElderTime.OnUpdateTimerHook
+		aInterfaceMenuList.wndMain:FindChild("Time"):AddEventHandler("MouseButtonDown", "ElderTime_OnTimeClick")
+		aInterfaceMenuList.ElderTime_OnTimeClick = ElderTime.OnTimeClick
 		
 		self.wndMain:FindChild("SourceOptions"):SetRadioSel("ElderTime_Source", self.source)
 		self.wndMain:FindChild("FormatOptions"):SetRadioSel("ElderTime_Format", self.format)
 		if self.showAMPM then
 			self.wndMain:FindChild("FormatOptions"):SetRadioSel("ElderTime_Format_AMPM", 1)
 		end
+		self.wndMain:SetAnchorOffsets(unpack(self.location))
+		
+		self.wndContext:SetRadioSel("ElderTime_ContextMenu", self.source)
 	end
 end
 
@@ -126,7 +139,7 @@ function ElderTime.OnUpdateTimerHook(self)
 	local tTimeLoc = tTimeLoc_Default
 	local tButtonLoc = tButtonLoc_Default
 
-	local tTime = nil	
+	local tTime = nil
 	if ElderTimeInst.source == 1 then
 		tTime = GameLib.GetLocalTime()
 	elseif ElderTimeInst.source == 2 then
@@ -161,7 +174,7 @@ function ElderTime.OnUpdateTimerHook(self)
 	end
 	
 	local sAMPM = ""
-	if ElderTimeInst.showAMPM then
+	if tTime and ElderTimeInst.showAMPM then
 		if tTime.nHour > 12 then
 			sAMPM = " PM"
 		else
@@ -181,7 +194,14 @@ function ElderTime.OnUpdateTimerHook(self)
 end
 
 function ElderTime:OnChangeSource(wndHandler, wndControl, eMouseButton)
-	self.source = wndHandler:GetParent():GetRadioSel("ElderTime_Source")
+	if wndHandler:GetParent() == self.wndMain:FindChild("SourceOptions") then
+		self.source = wndHandler:GetParent():GetRadioSel("ElderTime_Source")
+		self.wndContext:SetRadioSel("ElderTime_ContextMenu", self.source)
+	elseif wndHandler:GetParent() == self.wndContext then
+		self.source = wndHandler:GetParent():GetRadioSel("ElderTime_ContextMenu")
+		self.wndMain:FindChild("SourceOptions"):SetRadioSel("ElderTime_Source", self.source)
+		self.wndContext:Close()
+	end
 	aInterfaceMenuList.OnUpdateTimer(aInterfaceMenuList)
 end
 
@@ -211,9 +231,24 @@ function ElderTime:OnChangeFormat(wndHandler, wndControl, eMouseButton)
 	aInterfaceMenuList.OnUpdateTimer(aInterfaceMenuList)
 end
 
+function ElderTime.OnTimeClick(self, wndHandler, wndControl, eMouseButton)
+	if eMouseButton == 1 then
+		local tMousePos = Apollo.GetMouse()
+		local tWndPos = { tMousePos.x, tMousePos.y - 116, tMousePos.x + 115, tMousePos.y }
+		ElderTimeInst.wndContext:SetAnchorOffsets(unpack(tWndPos))
+		ElderTimeInst.wndContext:Invoke()
+	end
+end
+
 function ElderTime:OnConfiguationSave(wndHandler, wndControl, eMouseButton)
 	self.wndMain:Close()
 end
 
+function ElderTime:OnOpenConfiguration(wndHandler, wndControl, eMouseButton)
+	self.wndMain:Invoke()
+	self.wndContext:Close()
+end
+
 ElderTimeInst = ElderTime:new()
 ElderTimeInst:Init()
+
