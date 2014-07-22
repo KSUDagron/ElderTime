@@ -44,6 +44,7 @@ function ElderTime:new(o)
 	self.source = 1
 	self.format = 1
 	self.showAMPM = false
+	self.location = { 200, 200, 565, 450 }
 
     return o
 end
@@ -78,10 +79,10 @@ function ElderTime:OnRestore(saveDepth, savedVariables)
 	if saveDepth ~= GameLib.CodeEnumAddonSaveLevel.Character then return end
 	if savedVariables == {} or savedVariables == nil then return end
 	
-	self.source = savedVariables.source
-	self.format = savedVariables.format
-	self.showAMPM = savedVariables.showAMPM
-	self.location = savedVariables.location
+	if savedVariables.source ~= nil then self.source = savedVariables.source end
+	if savedVariables.format ~= nil then self.format = savedVariables.format end
+	if savedVariables.showAMPM ~= nil then self.showAMPM = savedVariables.showAMPM end
+	if savedVariables.location ~= nil then self.location = savedVariables.location end
 end
 
 function ElderTime:OnDocLoaded()
