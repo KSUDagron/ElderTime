@@ -109,6 +109,8 @@ function ElderTime:OnDocLoaded()
 			return
 		end
 		
+		if not aInterfaceMenuList.wndMain then RequestReloadUI() end
+		
 		fOnUpdateTimer = aInterfaceMenuList.OnUpdateTimer
 		aInterfaceMenuList.OnUpdateTimer = ElderTime.OnUpdateTimerHook
 		aInterfaceMenuList.wndMain:FindChild("Time"):AddEventHandler("MouseButtonDown", "ElderTime_OnTimeClick")
